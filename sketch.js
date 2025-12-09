@@ -10,6 +10,13 @@ let centerR = 200;
 let centerTargetR = 200;
 let centerAngle = 0;
 
+let mode3CoreColor;
+let mode3StarColor;
+let mode3ArcStart = -60;
+let mode3ArcSpan = 160;
+let mode3ArcRadiusOffset = 30;
+let mode3ArcRotateFactor = 1.0;
+
 function preload() {
   sound = loadSound("nmixx.mp3");
 }
@@ -27,11 +34,15 @@ function setup() {
 
   textAlign(CENTER, TOP);
   textSize(16);
+
+  mode3CoreColor = color(220, 180, 255, 100);
+  mode3StarColor = color(200, 200, 255, 220);
 }
 
 function draw() {
   background(5, 5, 20);
 
+  //사운드
   let spectrum = fft.analyze();
   let energy = fft.getEnergy("bass", "treble");
   let level = map(energy, 0, 255, 0, 1);
@@ -52,16 +63,32 @@ function draw() {
   let pulseBase = sin(frameCount * 2) * 15 * level;
 
   if (mode === 2) {
+    //Mode 3: 3초마다 색/패턴 바꿈
 
-    let pulse = pulseBase * random(0.5, 1.5);
+
+    if (frameCount % 180 === 0) {
+      mode3CoreColor = color(
+        random(150, 255),
+        random(100, 255),
+        random(150, 255),
+        random(80, 140)
+      );
+      mode3StarColor = color(
+        random(150, 255),
+        random(100, 255),
+        random(150, 255),
+        230
+      );
+      mode3ArcStart = random(-180, 180);
+      mode3ArcSpan = random(80, 220);
+      mode3ArcRadiusOffset = random(10, 60);
+      mode3ArcRotateFactor = random(0.6, 1.4);
+    }
+
+    let pulse = pulseBase * 1.1;
     let r = centerR + pulse;
 
-    let baseC = color(
-      random(150, 255),
-      random(100, 255),
-      random(150, 255),
-      random(50, 120)
-    );
+    let baseC = mode3CoreColor;
 
     noStroke();
     fill(baseC);
@@ -69,41 +96,43 @@ function draw() {
 
     noFill();
     stroke(
-      red(baseC) + random(-30, 30),
-      green(baseC) + random(-30, 30),
-      blue(baseC) + random(-30, 30),
-      random(150, 255)
+      red(baseC),
+      green(baseC),
+      blue(baseC),
+      210
     );
 
-    let sw = 1.5 + level * random(2, 6);
+    let sw = 2 + level * 5;
     strokeWeight(sw);
 
     push();
-    rotate(centerAngle * random(0.5, 1.5));
-    let start = random(-180, 180);
-    let span = random(60, 200);
-    let rr = r + random(-20, 40);
-    arc(0, 0, rr, rr, start, start + span);
+    rotate(centerAngle * mode3ArcRotateFactor);
+    arc(
+      0,
+      0,
+      r + mode3ArcRadiusOffset,
+      r + mode3ArcRadiusOffset,
+      mode3ArcStart,
+      mode3ArcStart + mode3ArcSpan
+    );
     pop();
 
   } else {
-
     let pulse = pulseBase;
     let r = centerR + pulse;
 
     let cold, warm;
     if (mode === 0) {
-
+      // Mode 1 색상
       cold = color(130, 90, 255, 70);
       warm = color(255, 110, 200, 90);
     } else {
-
-      cold = color(255, 130, 210, 70);
-      warm = color(255, 190, 240, 90);
+      // Mode 2 색상 
+      cold = color(80, 150, 255, 70);
+      warm = color(90, 255, 220, 90);
     }
 
     let baseC = lerpColor(cold, warm, level);
-
 
     noStroke();
     fill(baseC);
@@ -137,6 +166,9 @@ class Star {
 
     this.baseSize = random(1, 3);
     this.baseBright = random(150, 255);
+
+    this.dirAngle3 = random(0, 360);
+    this.speed3 = random(5, 20);
   }
 
   update(level, spectrum) {
@@ -152,11 +184,10 @@ class Star {
     this.bright = constrain(this.bright, 0, 255);
     let alpha = map(this.bright, 0, 255, 80, 255);
 
-
     this.size = this.baseSize + level * 5;
 
     if (mode === 0) {
-
+      //Mode 1
       let jitter = 0.3;
       this.x += random(-jitter, jitter) * level * 10;
       this.y += random(-jitter, jitter) * level * 10;
@@ -164,10 +195,10 @@ class Star {
       this.col = color(240, 240, 255, alpha);
 
     } else if (mode === 1) {
-      
+      //Mode 2
       this.size *= 1.8;
 
-      let angle = atan2(this.y, this.x); 
+      let angle = atan2(this.y, this.x);
       let speed = map(level, 0, 1, 2, 10);
 
       this.x += cos(angle + 90) * speed;
@@ -179,18 +210,18 @@ class Star {
       this.col = color(255, 150, 220, alpha);
 
     } else {
+      
+      //Mode 3
+      this.dirAngle3 += random(-0.5, 0.5); 
+      let speed = level * this.speed3;
+      this.x += cos(this.dirAngle3) * speed;
+      this.y += sin(this.dirAngle3) * speed;
 
-      // 랜덤 방향
-      let dirAngle = random(0, 360);
-      let speed = level * random(5, 20);
-      this.x += cos(dirAngle) * speed;
-      this.y += sin(dirAngle) * speed;
-
-      // 랜덤 색상
+      // 색은 3초마다 갱신
       this.col = color(
-        random(150, 255),
-        random(100, 255),
-        random(150, 255),
+        red(mode3StarColor),
+        green(mode3StarColor),
+        blue(mode3StarColor),
         alpha
       );
     }
@@ -227,11 +258,12 @@ function drawUI(level) {
 }
 
 function modeText() {
-  if (mode === 0) return "기본 별자리";
-  if (mode === 1) return "역동적 별자리";
-  if (mode === 2) return "랜덤 별자리";
+  if (mode === 0) return "기본모드";
+  if (mode === 1) return "활발모드";
+  if (mode === 2) return "랜덤모드";
 }
 
+// ===== 인터랙션 =====
 function mousePressed() {
   if (sound.isPlaying()) {
     sound.pause();
