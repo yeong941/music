@@ -6,6 +6,10 @@ let numStars = 300;
 let isPlaying = false;
 let mode = 0; 
 
+let centerR = 200;        
+let centerTargetR = 200;  
+let centerAngle = 0;      
+
 function preload() {
   sound = loadSound("nmixx.mp3");
 }
@@ -38,14 +42,42 @@ function draw() {
     s.show();
   }
 
+  centerTargetR = map(level, 0, 1, 140, 420);
+
+  centerR = lerp(centerR, centerTargetR, 0.15);
+
+  centerAngle += level * 6;
+
   push();
   translate(width / 2, height / 2);
-  let r = map(level, 0, 1, 150, 400);
-  let c1 = color(80, 120, 255, 40);
-  let c2 = color(255, 200, 150, 60);
-  let cc = mode === 2 ? c2 : c1;
-  fill(cc);
+
+  let pulse = sin(frameCount * 2) * 15 * level;  
+  let r = centerR + pulse;
+
+  let cold = color(80, 120, 255, 60);   
+  let warm = color(255, 200, 150, 80);  
+  let baseC = lerpColor(cold, warm, level);
+  if (mode === 2) baseC = warm;         
+
+  noStroke();
+  fill(baseC);
   ellipse(0, 0, r, r);
+
+  noFill();
+  stroke(
+    red(baseC),
+    green(baseC),
+    blue(baseC),
+    180
+  );
+  strokeWeight(2 + level * 4);  
+
+  push();
+  rotate(centerAngle);
+
+  arc(0, 0, r + 30, r + 30, -60, 120);
+  pop();
+
   pop();
 
   drawUI(level);
@@ -57,7 +89,6 @@ class Star {
   }
 
   reset() {
-
     this.x = random(-width, width);
     this.y = random(-height, height);
     this.z = random(width); 
@@ -90,7 +121,7 @@ class Star {
     this.bright = constrain(this.bright, 0, 255);
 
     if (mode === 2) {
-      let high = spectrum[ spectrum.length - 1 ] || 0;
+      let high = spectrum[spectrum.length - 1] || 0;
       let hueVal = map(high, 0, 255, 180, 360);
       this.col = color(hueVal, 80, this.bright);
     } else {
@@ -102,8 +133,6 @@ class Star {
     let sx = map(this.x / this.z, 0, 1, 0, width);
     let sy = map(this.y / this.z, 0, 1, 0, height);
 
-    let px = map(this.x / this.pz, 0, 1, 0, width);
-    let py = map(this.y / this.pz, 0, 1, 0, height);
     this.pz = this.z;
 
     fill(this.col);
@@ -133,7 +162,6 @@ function modeText() {
 }
 
 function mousePressed() {
-
   if (sound.isPlaying()) {
     sound.pause();
     isPlaying = false;
